@@ -1,10 +1,12 @@
 from random import randrange
+from sqlite3 import Cursor
+import time
 from turtle import pos
 from typing import Optional
 from fastapi import FastAPI, Response, status, HTTPException
 from pydantic import BaseModel
-
-
+import psycopg2
+from psycopg2.extras import RealDictCursor
 app = FastAPI()
 
 
@@ -14,6 +16,23 @@ class Post(BaseModel):
     content: str
     auther: Optional[str] = "Tashil"
 
+
+while True:
+    try:
+        conn = psycopg2.connect(
+            host="localhost",
+            database="fastapi",
+            user="postgres",
+            password="15426341",
+            cursor_factory=RealDictCursor,
+        )
+        cursor = conn.cursor()
+        print("DATABASE connetion was succesfull!")
+        break
+    except Exception as error:
+        print("Faild connetion to database")
+        print("Error ", error)
+        time.sleep(2)
 
 post_dict = [
     {
