@@ -62,7 +62,10 @@ def find_post_index(index):
 
 @app.get("/")
 def get_posts():
-    return post_dict
+    cursor.execute('''SELECT * FROM public."Post"''')
+    posts = cursor.fetchall()
+    print(posts)
+    return posts
 
 
 @app.get("/posts")
