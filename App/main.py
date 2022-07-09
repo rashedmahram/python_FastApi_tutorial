@@ -14,6 +14,7 @@ class Post(BaseModel):
     id: int = randrange(0, 1000)
     title: str
     content: str
+    published: bool = True
     auther: Optional[str] = "Tashil"
 
 
@@ -68,9 +69,15 @@ def get_posts():
     return posts
 
 
-@app.get("/posts")
-def get_posts():
-    return post_dict
+@app.get("/post/{id}")
+def get_posts(id: int):
+    cursor.execute(
+        '''select * from public."Post" where id =%s''', (str(id),))
+    post = cursor.fetchone()
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Post Was Not Found")
+    return post
 
 
 @app.get("/posts/{id}")
@@ -87,30 +94,34 @@ def get_post(id: int, response: Response):
 
 @app.post("/post/create", status_code=status.HTTP_201_CREATED)
 def create_post(post: Post):
-    new_post = post.dict()
-    post_dict.append(new_post)
-    return post_dict
+    cursor.execute('''INSERT INTO public."Post"(title, content, published) VALUES (%s, %s, %s) RETURNING *;''',
+                   (post.title, post.content, post.published))
+    new_post = cursor.fetchone()
+    conn.commit()
+    return new_post
 
 
 @app.delete("/post/delete/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
-    # remove form array
-    index = find_post_index(index=id)
-    if index == None:
+    cursor.execute(
+        '''DELETE FROM public."Post" WHERE id=%s returning *''', (str(id),))
+    delete_post = cursor.fetchone()
+
+    if delete_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"There is No Post with ID: {id}")
-
-    post_dict.pop()
+    conn.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.put("/post/update/{id}")
 def update_post(id: int, post: Post):
-    index = find_post_index(index=id)
-    if index == None:
+    cursor.execute(''' UPDATE public."Post"
+	SET  title=%s, content=%s WHERE id=%s returning *''', (post.title, post.content, str(id),))
+    updated_post = cursor.fetchone()
+
+    if updated_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"There is No Post with ID: {id}")
-    update_data = post.dict()
-    update_data["id"] = id
-    post_dict[index] = update_data
-    return {"Data": update_data}
+    conn.commit()
+    return {"Data": updated_post}
