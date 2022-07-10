@@ -1,5 +1,3 @@
-from email.mime import base
-from email.policy import default
 from .database import Base
 from sqlalchemy import Column,  Integer, String, Boolean, ForeignKey
 from sqlalchemy.sql.expression import text

@@ -1,8 +1,6 @@
 from random import randrange
 from sqlite3 import Cursor
 import time
-from turtle import pos
-from typing import Optional
 from fastapi import Depends, FastAPI, Response, status, HTTPException, Depends
 from pydantic import BaseModel
 import psycopg2
@@ -11,8 +9,6 @@ from requests import Session
 from . import models
 from .database import engine, get_db
 from sqlalchemy.orm import Session
-
-
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -22,17 +18,11 @@ app = FastAPI()
 # https://fastapi.tiangolo.com/tutorial/sql-databases/
 
 
-@app.get("/sqlalchemy")
-def test_post(db: Session = Depends(get_db)):
-    return {"status": "success"}
-
-
 class Post(BaseModel):
     id: int = randrange(0, 1000)
     title: str
     content: str
     published: bool = True
-    auther: Optional[str] = "Tashil"
 
 
 while True:
@@ -110,11 +100,19 @@ def get_post(id: int, response: Response):
 
 
 @app.post("/post/create", status_code=status.HTTP_201_CREATED)
-def create_post(post: Post):
-    cursor.execute('''INSERT INTO public."Post"(title, content, published) VALUES (%s, %s, %s) RETURNING *;''',
-                   (post.title, post.content, post.published))
-    new_post = cursor.fetchone()
-    conn.commit()
+def create_post(post: Post, db: Session = Depends(get_db)):
+    # cursor.execute('''INSERT INTO public."Post"(title, content, published) VALUES (%s, %s, %s) RETURNING *;''',
+    #                (post.title, post.content, post.published))
+    # new_post = cursor.fetchone()
+    # conn.commit()
+    new_post = models.Post(
+        title=post.title,
+        content=post.content,
+        published=post.published,
+    )
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
     return new_post
 
 
@@ -142,3 +140,64 @@ def update_post(id: int, post: Post):
                             detail=f"There is No Post with ID: {id}")
     conn.commit()
     return {"Data": updated_post}
+
+
+@app.get("/sqlalchemy")
+def test_post(db: Session = Depends(get_db)):
+    posts = db.query(models.Post).all()
+    return {"status": posts}
+
+
+@app.get("/sqlalchemy/posts")
+def get_posts_alchemy(db: Session = Depends(get_db)):
+    posts = db.query(models.Post).all()
+    return {"status": posts}
+
+
+@app.post("/alchemyslq/post")
+def add_post_alchemy(posted_data: Post, db: Session = Depends(get_db)):
+    # new_post = models.Post(
+    #     title=posted_data.title,
+    #     content=posted_data.content,
+    # )
+    new_post = models.Post(**posted_data.dict())
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+    return new_post
+
+
+@app.get("/alchemyslq/post/{id}")
+def get_post_alchemy(id: int, db: Session = Depends(get_db)):
+    post = db.query(models.Post).filter(models.Post.id == id).first()
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Post Was Not Found")
+    return post
+
+
+@app.delete("/alchemyslq/delete/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(id: int, db: Session = Depends(get_db)):
+    post = db.query(models.Post).filter(models.Post.id == id)
+
+    if post.first() == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"There is No Post with ID: {id}")
+    post.delete(synchronize_session=False)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.put("/alchemyslq/update/{id}")
+def update_post(id: int, db: Session = Depends(get_db)):
+    # cursor.execute(''' UPDATE public."Post"
+    # SET  title=%s, content=%s WHERE id=%s returning *''', (post.title, post.content, str(id),))
+    # updated_post = cursor.fetchone()
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+    post = post_query.first()
+
+    if post == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"There is No Post with ID: {id}")
+    conn.commit()
+    return {"Data": post}
