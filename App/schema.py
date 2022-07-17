@@ -1,5 +1,6 @@
 from datetime import datetime
-from pydantic import BaseModel
+from typing import Union
+from pydantic import BaseModel, EmailStr
 
 
 class CreatePost(BaseModel):
@@ -19,8 +20,6 @@ class UpdatePost(BaseModel):
     class Config:
         orm_mode = True
 
-# Response
-
 
 class Post(CreatePost):
     id: int
@@ -28,3 +27,41 @@ class Post(CreatePost):
 
     class Config:
         orm_mode = True
+# USER ACOUNTS
+
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    # hashed_password: str
+
+
+class UserCreateRE(BaseModel):
+    email: EmailStr
+    id: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+# Hashing
+        """_summary_
+        
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    username: Union[str, None] = None
+
+
+class UserInDB(UserCreate):
+    hashed_password: str
+
+
+class USER(BaseModel):
+    email: EmailStr
+    id: int
+    created_at: datetime
+"""

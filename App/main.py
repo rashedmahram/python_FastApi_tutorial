@@ -1,9 +1,8 @@
-from turtle import title
 from typing import List
 from sqlalchemy.orm import Session
 from fastapi import Depends, FastAPI, HTTPException, status
 from .database import engine, get_db
-from . import models, schema
+from . import models, schema, utils
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -23,44 +22,86 @@ app = FastAPI()
 #     return db.query(models.User).filter(models.User.id == user_id).first()
 
 
-@app.get('/', response_model=List[schema.CreatePost])
-def getPostList(db: Session = dp):
-    post = db.query(models.Post).all()
-    if not post:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Post Was Not Found")
-    return post
 
 
-@app.get('/{id}', response_model=schema.CreatePost)
-def getPost(id: int, db: Session = dp):
-    post = db.query(models.Post).filter(models.Post.id == id).first()
-    if not post:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Post Was Not Found")
-    return post
 
 
-@app.post('/', response_model=schema.CreatePost)
-def addPost(data: schema.CreatePost, db: Session = dp):
-    db_post = models.Post(
-        title=data.title,
-        content=data.content,
-        published=data.published
+"""
+
+# HASHING
+SECRET_KEY = "fc2548d4e051c8d98ab27a64fed92d1196306b09f981e19374401162bf0246a6"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# tell what algorithem we Will Use
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
+        "disabled": False,
+    }
+}
+
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return schema.UserInDB(**user_dict)
+
+
+def authenticate_user(fake_db, username: str, password: str):
+    user = get_user(fake_db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+
+def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
     )
-    db.add(db_post)
-    db.commit()
-    db.refresh(db_post)
-    return db_post
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = schema.TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+    user = get_user(schema.fake_users_db, username=token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
 
 
-@app.put("/{id}", response_model=schema.Post)
-def updatePost(id: int, updated_post: schema.UpdatePost, db: Session = dp, ):
-    post_query = db.query(models.Post).filter(models.Post.id == id)
-    post = post_query.first()
-    if not post:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Post Was Not Found")
-    post_query.update(updated_post.dict(), synchronize_session=False)
-    db.commit()
-    return post_query.first()
+async def get_current_active_user(current_user: schema.USER = Depends(get_current_user)):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+"""
