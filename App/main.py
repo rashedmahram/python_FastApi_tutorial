@@ -1,29 +1,35 @@
+import time
 from typing import List
+from psycopg2.extras import RealDictCursor
+import psycopg2
 from sqlalchemy.orm import Session
 from fastapi import Depends, FastAPI, HTTPException, status
 from .database import engine, get_db
 from . import models, schema, utils
-
+from .routers import post, user
 
 models.Base.metadata.create_all(bind=engine)
 dp = Depends(get_db)
 app = FastAPI()
-# Model[X]
-# [X]databse
 
-# Schema
+while True:
+    try:
+        conn = psycopg2.connect(host='localhost', database='fastapi', user='postgres',
+                                password='15426341', cursor_factory=RealDictCursor)
+        cursor = conn.cursor()
+        print("DATABASE connection was succesfull !!")
+        break
+    except Exception as error:
+        print("Erorr", error)
+        time.sleep(2)
 
-# Functions
-# []get data
-# []add,update,delete
+app.include_router(post.router)
+app.include_router(user.router)
 
 
-# def get_user(db: Session, user_id: int):
-#     return db.query(models.User).filter(models.User.id == user_id).first()
-
-
-
-
+@app.get('/')
+def root():
+    return {"msg": "hellowrold"}
 
 
 """
