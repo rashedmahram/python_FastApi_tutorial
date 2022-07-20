@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Union
+from typing import Optional, Union
 from pydantic import BaseModel, EmailStr
 
 
@@ -35,6 +35,9 @@ class UserCreate(BaseModel):
     password: str
     # hashed_password: str
 
+    class Config:
+        orm_mode = True
+
 
 class UserCreateRE(BaseModel):
     email: EmailStr
@@ -42,11 +45,18 @@ class UserCreateRE(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        orm_mode = True 
 
-# Hashing
-        """_summary_
-        
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+    class Config:
+        orm_mode = True
+    # Hashing
+    """_summary_
+
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -65,3 +75,12 @@ class USER(BaseModel):
     id: int
     created_at: datetime
 """
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    id: Optional[str] = None

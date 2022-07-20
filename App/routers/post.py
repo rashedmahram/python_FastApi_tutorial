@@ -2,12 +2,12 @@ from typing import List
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from ..database import get_db
-from .. import models, schema
+from .. import models, schema, Oauth2
 dp = Depends(get_db)
 
 router = APIRouter(
     prefix="/post",
-    tags=["posts"]
+    tags=["Posts"]
 )
 
 
@@ -21,7 +21,7 @@ def getPostList(db: Session = dp):
 
 
 @router.get('/{id}', response_model=schema.CreatePost)
-def getPost(id: int, db: Session = dp):
+def getPost(id: int, db: Session = dp, current_user: int = Depends(Oauth2.get_current_user)):
     post = db.query(models.Post).filter(models.Post.id == id).first()
     if not post:
         raise HTTPException(
@@ -29,8 +29,8 @@ def getPost(id: int, db: Session = dp):
     return post
 
 
-@router.post('/', response_model=schema.CreatePost)
-def addPost(data: schema.CreatePost, db: Session = dp):
+@router.post('/create', response_model=schema.CreatePost)
+def addPost(data: schema.CreatePost, db: Session = dp, current_user: int = Depends(Oauth2.get_current_user)):
     db_post = models.Post(
         title=data.title,
         content=data.content,
@@ -42,8 +42,9 @@ def addPost(data: schema.CreatePost, db: Session = dp):
     return db_post
 
 
-@router.put("/{id}", response_model=schema.Post)
-def updatePost(id: int, updated_post: schema.UpdatePost, db: Session = dp, ):
+@router.put("/{id}", response_model=schema.Post,)
+def updatePost(id: int, updated_post: schema.UpdatePost, db: Session = dp, current_user: int = Depends(Oauth2.get_current_user)):
+    print(current_user)
     post_query = db.query(models.Post).filter(models.Post.id == id)
     post = post_query.first()
     if not post:

@@ -6,7 +6,7 @@ from .. import models, schema, utils
 
 router = APIRouter(
     prefix="/user",
-    tags=["users"]
+    tags=["Users"]
 )
 
 
