@@ -3,7 +3,7 @@ from typing import Optional, Union
 from pydantic import BaseModel, EmailStr
 
 
-class CreatePost(BaseModel):
+class PostBase(BaseModel):
     title: str
     content: str
     published: bool
@@ -12,31 +12,16 @@ class CreatePost(BaseModel):
         orm_mode = True
 
 
-class UpdatePost(BaseModel):
-    title: str
-    content: str
-    published: bool
-
-    class Config:
-        orm_mode = True
+class CreatePost(PostBase):
+    pass
 
 
-class Post(CreatePost):
-    id: int
-    # for the error that says its not dict
-
-    class Config:
-        orm_mode = True
-# USER ACOUNTS
+class UpdatePost(PostBase):
+    pass
 
 
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str
-    # hashed_password: str
-
-    class Config:
-        orm_mode = True
+class Post(PostBase):
+    owner_id: int
 
 
 class UserCreateRE(BaseModel):
@@ -45,7 +30,23 @@ class UserCreateRE(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True 
+        orm_mode = True
+
+
+class Posts(PostBase):
+    id: int
+    owner_id: int
+    owner: UserCreateRE
+
+
+# USER ACOUNTS
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    # hashed_password: str
+
+    class Config:
+        orm_mode = True
 
 
 class UserLogin(BaseModel):
